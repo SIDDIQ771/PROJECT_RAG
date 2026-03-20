@@ -1,0 +1,10 @@
+[
+  {
+    "query": "What are the security policies for module X?",
+    "relevant_sources": ["docs/security_policy.pdf"]
+  },
+  {
+    "query": "Summarize JIRA-123",
+    "relevant_sources": ["JIRA-123"]
+  }
+]
