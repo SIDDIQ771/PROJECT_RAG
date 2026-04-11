@@ -29,13 +29,17 @@ def answer_query(user_query: str) -> str:
 
     # Single JIRA ticket — exact field answer mode
     if len(sources) == 1 and sources[0].startswith("JIRA-"):
-        meta_result = db.get(where={"source": sources[0]})
+        # ✅ FIX: Get the issue_key from source name and filter by issue_key metadata
+        # This ensures we always get the most up-to-date metadata after webhook updates
+        issue_key = sources[0].replace("JIRA-", "")
+        meta_result = db.get(where={"issue_key": {"$eq": issue_key}})
         if meta_result["metadatas"]:
+            # Use first chunk metadata — all chunks share the same field metadata
             meta = meta_result["metadatas"][0]
             exact = extract_exact_answer(user_query, retrieved_text, meta)
             return f"{exact}\n\n[Source: {sources[0]}]"
 
-    # ✅ Multi-source — label each source in context so Groq knows what came from where
+    # Multi-source — label each source in context so Groq knows what came from where
     labelled_context = f"[Source: {', '.join(sources)}]\n\n{retrieved_text}"
     summary = generate_answer(user_query, labelled_context)
     src_list = "\n".join(f"- {s}" for s in sources)

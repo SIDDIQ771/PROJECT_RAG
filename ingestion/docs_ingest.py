@@ -7,6 +7,25 @@ from vectorstore.chroma_client import get_chroma_client
 
 db = get_chroma_client()
 
+SUPPORTED_VIDEO_EXT = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v"}
+SUPPORTED_DOC_EXT   = {".pdf", ".docx", ".md"}
+
+# ✅ Ignore transcript files saved by video_transcriber — they are already
+# ingested as VIDEO- chunks and must not be re-ingested as DOC- chunks
+IGNORED_FILES = {"KT_Recording_testdata.txt"}  # auto-populated at runtime
+
+
+def _is_transcript_file(file_path: str) -> bool:
+    """Skip .txt files that are auto-generated transcripts alongside videos."""
+    if not file_path.endswith(".txt"):
+        return False
+    # If a video with same base name exists, this is a transcript file
+    base = os.path.splitext(file_path)[0]
+    for ext in SUPPORTED_VIDEO_EXT:
+        if os.path.exists(base + ext):
+            return True
+    return False
+
 
 def load_document_text(file_path: str) -> str:
     ext = file_path.lower()
@@ -21,6 +40,23 @@ def load_document_text(file_path: str) -> str:
 
 
 def process_single_document(file_path: str):
+    ext = os.path.splitext(file_path)[1].lower()
+
+    # Route video files to video transcriber
+    if ext in SUPPORTED_VIDEO_EXT:
+        from ingestion.video_transcriber import process_video
+        process_video(file_path)
+        return
+
+    # ✅ Skip auto-generated transcript .txt files
+    if _is_transcript_file(file_path):
+        print(f"[Docs] Skipping transcript file (already ingested as video): {os.path.basename(file_path)}")
+        return
+
+    if ext not in SUPPORTED_DOC_EXT and ext != ".txt":
+        print(f"[Docs] Skipping unsupported file type: {file_path}")
+        return
+
     print(f"[Docs] Processing file: {file_path}")
     text = load_document_text(file_path)
     if not text.strip():
@@ -28,8 +64,6 @@ def process_single_document(file_path: str):
         return
 
     filename = os.path.basename(file_path)
-
-    # ✅ Use optimized chunker
     chunks = chunk_text(text)
 
     base_metadata = {

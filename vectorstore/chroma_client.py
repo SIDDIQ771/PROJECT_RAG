@@ -2,13 +2,9 @@ import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from config.settings import settings
 
-# ✅ all-mpnet-base-v2 — significantly better than MiniLM for:
-# - rare single mentions deep in large documents
-# - semantic similarity across long contexts
-# - distinguishing nuanced technical terms
-# Tradeoff: ~420MB vs ~90MB for MiniLM, slightly slower to embed
 embedding_fn = SentenceTransformerEmbeddingFunction(
-    model_name="sentence-transformers/all-mpnet-base-v2"
+    model_name="sentence-transformers/all-mpnet-base-v2",
+    local_files_only=True  # ✅ Use cached model, no HuggingFace network call
 )
 
 def get_chroma_client():

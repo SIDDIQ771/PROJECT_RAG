@@ -1,14 +1,11 @@
 from retrieval.intent_parser import parse_intent
 from retrieval.query_rewriter import rewrite_query
 
-# Threshold for JIRA/Confluence — tighter since these are structured
-JIRA_DISTANCE_THRESHOLD = 0.70
-
-# Threshold for docs — looser to catch rare single mentions deep in large docs
-DOC_DISTANCE_THRESHOLD = 0.80
-
-# Global threshold for mixed queries
-GLOBAL_DISTANCE_THRESHOLD = 0.75
+# ✅ Raised slightly from 0.70 to 0.75 — was rejecting exact issue key matches
+# that scored just above 0.70 (e.g. RAG-7 scored 0.7014)
+JIRA_DISTANCE_THRESHOLD = 0.75
+DOC_DISTANCE_THRESHOLD  = 0.80
+VIDEO_DISTANCE_THRESHOLD = 0.80
 
 
 def _filter(results: dict, threshold: float) -> list[tuple[str, dict]]:
@@ -64,15 +61,16 @@ def unified_retrieve(query: str, db):
                            include=["documents", "metadatas", "distances"])
         if not results["documents"] or not results["documents"][0]:
             return None, []
-        hits = _filter(results, JIRA_DISTANCE_THRESHOLD)
-        if not hits:
+        # ✅ For exact issue key matches, skip distance filter entirely
+        # — if the user typed RAG-7 explicitly, always return it
+        docs_and_metas = list(zip(results["documents"][0], results["metadatas"][0]))
+        if not docs_and_metas:
             return None, []
-        return hits[0][0], [f"JIRA-{key}"]
+        return docs_and_metas[0][0], [f"JIRA-{key}"]
 
     # 3. Expand query for better semantic matching
     expanded_query = rewrite_query(query)
 
-    # ✅ Fetch more results — critical for rare single mentions in large docs
     results = db.query(query_texts=[expanded_query], n_results=20,
                        include=["documents", "metadatas", "distances"])
 
@@ -97,7 +95,6 @@ def unified_retrieve(query: str, db):
                 and dist <= JIRA_DISTANCE_THRESHOLD]
 
     else:
-        # Global — use per-source thresholds
         hits = []
         for doc, meta, dist in zip(
             results["documents"][0],
@@ -107,6 +104,8 @@ def unified_retrieve(query: str, db):
             src = meta.get("source", "")
             if src.startswith("DOC-") and dist <= DOC_DISTANCE_THRESHOLD:
                 hits.append((doc, meta))
+            elif src.startswith("VIDEO-") and dist <= VIDEO_DISTANCE_THRESHOLD:
+                hits.append((doc, meta))
             elif (src.startswith("JIRA-") or src.startswith("CONFLUENCE-")) \
                     and dist <= JIRA_DISTANCE_THRESHOLD:
                 hits.append((doc, meta))
@@ -114,7 +113,6 @@ def unified_retrieve(query: str, db):
     if not hits:
         return None, []
 
-    # Group by source
     grouped = {}
     for doc, meta in hits:
         src = meta.get("source", "unknown")

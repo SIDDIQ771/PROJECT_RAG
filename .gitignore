@@ -1,6 +1,5 @@
-pycache/
+*__pycache__/
 .enc
-*.mp4
 *.mkv
 *.mov
 vectorstore/chroma_db
