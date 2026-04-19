@@ -85,7 +85,5 @@ Returns literal field values when possible.
 python -m ingestion.ingest_all
 
 First run - ngrok http 8000
-Then update the webhook url
-Then execute - python -m orchestrator
-Then python -m main
+Then execute - python -m ui.app
 
