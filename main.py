@@ -63,11 +63,13 @@ def answer_query(user_query: str) -> str:
         retrieved_text
     )
 
-    if not is_valid:
+    if not is_valid and not any(
+    s.startswith("VIDEO-") for s in sources
+    ):
         return (
-            f"I could not find sufficient information related to "
-            f"{', '.join(missing_entities)} in the knowledge base."
-        )
+        f"I could not find sufficient information related to "
+        f"{', '.join(missing_entities)} in the knowledge base."
+    )
 
     # ==========================================================
     # LLM ANSWER GENERATION

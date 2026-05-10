@@ -8,7 +8,7 @@ from retrieval.query_rewriter import rewrite_query
 
 JIRA_DISTANCE_THRESHOLD = 0.75
 DOC_DISTANCE_THRESHOLD = 0.80
-VIDEO_DISTANCE_THRESHOLD = 0.80
+VIDEO_DISTANCE_THRESHOLD = 0.55
 
 # ==========================================================
 # SOURCE LIMITING
